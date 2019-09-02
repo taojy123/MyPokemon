@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pokemon Card</title>
+</head>
+<body>
+<form action="/game/add_player/" method="post">
+  加入游戏
+  <input type="hidden" name="game_id" value="{{ game.id }}">
+  AI<input type="checkbox" name="is_ai">
+  <input type="submit">
+</form>
+
+{% if messages %}
+  <ul class="messages">
+      {% for message in messages %}
+      <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+      {% endfor %}
+  </ul>
+{% endif %}
+
+{% for player in game.players %}
+  <div class="player" style="margin: 30px; padding: 5px; border: 1px gray solid">
+    <p>Player Name: {{ player.name }} {% if player.turn %}[Turn]{% endif %}</p>
+    <p>Cards:</p>
+    {% for card in player.cards %}
+      <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
+        <div>{{ card.pokemon }}</div>
+        <div>system: {{ card.pokemon.system }}</div>
+        <div>Lv: {{ card.level }} [{{ card.exp }}]</div>
+        <div>Points: {{ card.available_points }}</div>
+        <div>attack: {{ card.attack }}</div>
+        <div>defense: {{ card.defense }}</div>
+        <div>hp: {{ card.hp }}</div>
+        <div>skill: {{ card.skill }}</div>
+        <div>{{ card.get_status_display }}</div>
+        <div>
+          Actions:
+          <form action="/game/card/{{ card.id }}/action/" method="post">
+            <input type="submit" name="action" value="learn">
+            {% if card.can_evo %}
+              <input type="submit" name="action" value="evo">
+            {% endif %}
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div style="clear: both"></div>
+
+    <p>Actions:</p>
+
+    <form action="/game/{{ game.id }}/action/" method="post">
+      <input type="submit" name="action" value="wild">
+      <input type="submit" name="action" value="match">
+    </form>
+
+    <div style="clear: both"></div>
+  </div>
+{% endfor %}
+
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<script>
+  $(function () {
+  })
+</script>
+</body>
+</html>

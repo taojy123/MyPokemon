@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wild</title>
+</head>
+<body>
+
+{% if messages %}
+  <ul class="messages">
+      {% for message in messages %}
+      <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+      {% endfor %}
+  </ul>
+{% endif %}
+
+<p>遇到野生精灵：</p>
+
+<div style="margin: 10px; padding: 5px; border: 1px gray solid">
+  <div>{{ wild.card.pokemon }}</div>
+  <div>system: {{ wild.card.pokemon.system }}</div>
+  <div>Lv: {{ wild.card.level }} [{{ wild.card.exp }}]</div>
+  <div>Points: {{ wild.card.available_points }}</div>
+  <div>attack: {{ wild.card.attack }}</div>
+  <div>defense: {{ wild.card.defense }}</div>
+  <div>hp: {{ wild.card.hp }}</div>
+  <div>skill: {{ wild.card.skill }}</div>
+</div>
+
+
+<p>选择出战精灵：</p>
+
+{% for card in player.cards %}
+  {% if card.status == 1 %}
+      <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
+        <div>{{ card.pokemon }}</div>
+        <div>system: {{ card.pokemon.system }}</div>
+        <div>Lv: {{ card.level }} [{{ card.exp }}]</div>
+        <div>Points: {{ card.available_points }}</div>
+        <div>attack: {{ card.attack }}</div>
+        <div>defense: {{ card.defense }}</div>
+        <div>hp: {{ card.hp }}</div>
+        <div>skill: {{ card.skill }}</div>
+        <div>{{ card.get_status_display }}</div>
+        <div>
+          <form action="/game/wild/{{ wild.id }}/fight/">
+            <input type="hidden" name="card_id" value="{{ card.id }}">
+            <input type="submit" value="出战">
+          </form>
+        </div>
+      </div>
+
+      <form action="/game/wild/{{ wild.id }}/fight/">
+        <input type="hidden" name="card_id" value="">
+        <input type="submit" value="逃跑">
+      </form>
+
+  {% endif %}
+{% endfor %}
+
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<script>
+  $(function () {
+  })
+</script>
+</body>
+</html>
