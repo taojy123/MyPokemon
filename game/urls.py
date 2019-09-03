@@ -9,7 +9,7 @@ urlpatterns = [
     path('game/<int:game_id>/', game),
     path('add_player/', add_player),
     path('card/<int:card_id>/action/', card_action),
-    path('game/<int:game_id>/action', game_action),
-    path('game/<int:wild_id>/', wild),
-    path('game/<int:wild_id>/fight/', fight),
+    path('game/<int:game_id>/action/', game_action),
+    path('wild/<int:wild_id>/', wild),
+    path('wild/<int:wild_id>/fight/', fight),
 ]

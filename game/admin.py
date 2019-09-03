@@ -17,7 +17,7 @@ class PokemonAdmin(admin.ModelAdmin):
 
 @admin.register(models.Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name']
+    list_display = ['id', 'name', 'round']
 
 
 @admin.register(models.Player)
@@ -38,5 +38,23 @@ class CardAdmin(admin.ModelAdmin):
 class ExtraPointAdmin(admin.ModelAdmin):
     list_display = ['id', 'card', 'kind']
     list_filter = ['kind']
+
+
+@admin.register(models.Battle)
+class BattleAdmin(admin.ModelAdmin):
+    list_display = ['id', 'card1', 'card2', 'winner']
+    raw_id_fields = ['card1', 'card2']
+
+
+@admin.register(models.Match)
+class MatchAdmin(admin.ModelAdmin):
+    list_display = ['id', 'player1', 'player2', 'winner']
+    raw_id_fields = ['player1', 'player2']
+
+
+@admin.register(models.Wild)
+class WildAdmin(admin.ModelAdmin):
+    list_display = ['id', 'player', 'card', 'winner']
+    raw_id_fields = ['player', 'card']
 
 

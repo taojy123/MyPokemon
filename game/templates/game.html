@@ -20,6 +20,7 @@
   </ul>
 {% endif %}
 
+<h4>第 {{ game.round }} 回合</h4>
 {% for player in game.players %}
   <div class="player" style="margin: 30px; padding: 5px; border: 1px gray solid">
     <p>Player Name: {{ player.name }} {% if player.turn %}[Turn]{% endif %}</p>
@@ -42,6 +43,9 @@
             {% if card.can_evo %}
               <input type="submit" name="action" value="evo">
             {% endif %}
+            {% if card.status == 2 %}
+              <input type="submit" name="action" value="out">
+            {% endif %}
           </form>
         </div>
       </div>
@@ -51,7 +55,7 @@
 
     <p>Actions:</p>
 
-    <form action="/game/{{ game.id }}/action/" method="post">
+    <form action="/game/game/{{ game.id }}/action/" method="post">
       <input type="submit" name="action" value="wild">
       <input type="submit" name="action" value="match">
     </form>

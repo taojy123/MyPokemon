@@ -13,7 +13,7 @@ class Skill(models.Model):
     power = models.IntegerField(default=0)
     
     def __str__(self):
-        return self.name
+        return f'{self.name}[{self.system}]'
 
 
 class Pokemon(models.Model):
@@ -35,6 +35,7 @@ class Pokemon(models.Model):
 
 class Game(models.Model):
     name = models.CharField(max_length=50, blank=True)
+    round = models.IntegerField(default=1)
     
     def __str__(self):
         return self.name
@@ -56,8 +57,7 @@ class Game(models.Model):
         assert not self.card_set.exists()
         assert not self.player_set.exists()
         for p in Pokemon.objects.all():
-            card = self.card_set.create(pokemon=p, level=p.level)
-            card.learn()
+            self.card_set.create(pokemon=p, level=p.level)
             
     def add_player(self, user=None, init_card=None):
         if user:
@@ -80,8 +80,11 @@ class Game(models.Model):
         player = self.players.filter(id__gt=self.turn_player.id).first()
         if not player:
             player = self.players.first()
+            self.round += 1
+            self.save()
         self.players.update(turn=False)
         player.turn = True
+        player.save()
         return player
 
 
@@ -175,12 +178,12 @@ class Card(models.Model):
     @property
     def defense(self):
         extra_points = self.extrapoint_set.filter(kind='defense').count()
-        return self.pokemon.attack + extra_points
+        return self.pokemon.defense + extra_points
 
     @property
     def hp(self):
         extra_points = self.extrapoint_set.filter(kind='hp').count()
-        return self.pokemon.attack + extra_points
+        return self.pokemon.hp + extra_points
 
     @property
     def effective_points(self):
@@ -189,6 +192,11 @@ class Card(models.Model):
     @property
     def available_points(self):
         return self.level - self.pokemon.level - self.effective_points
+    
+    def save(self, *args, **kwargs):
+        if not self.skill:
+            self.learn()
+        return super().save(*args, **kwargs)
 
 
 class ExtraPoint(models.Model):
@@ -209,17 +217,21 @@ class ExtraPoint(models.Model):
 def get_harm(card1, card2):
     x = 1
     for system in card2.systems:
+        print(card1.skill.system, system)
         y = SYSTEM_MAP[card1.skill.system][system]
         if y > x:
             x = y
         
     if random.randint(1, 10) == 1:
+        # 十分之一几率被闪避
         harm = 0
         text = f'{card1} 使用 {card1.skill} 攻击 {card2}，没有命中。'
     else:
         harm = card1.attack + card1.skill.power * x - card2.defense
+        harm = max(harm, 1)
         xt = st = ''
         if random.randint(1, 10) == 1:
+            # 十分之一几率致命一击
             harm *= 2
             st = '，致命一击'
         if x == 0:
@@ -233,12 +245,11 @@ def get_harm(card1, card2):
     return harm, text
     
 
-
 class Battle(models.Model):
     card1 = models.ForeignKey(Card, related_name='card1_battle_set', on_delete=models.CASCADE)
     card2 = models.ForeignKey(Card, related_name='card2_battle_set', on_delete=models.CASCADE)
     events = models.TextField()
-    winner = models.ImageField(default=0)
+    winner = models.IntegerField(default=0)
     
     def __str__(self):
         return f'{self.card1} vs {self.card2}'
@@ -246,6 +257,28 @@ class Battle(models.Model):
     @property
     def game(self):
         return self.card1.game
+    
+    @property
+    def winner_card(self):
+        if self.winner == 1:
+            return self.card1
+        elif self.winner == 2:
+            return self.card2
+        else:
+            return None
+    
+    @property
+    def loser_card(self):
+        if self.winner == 1:
+            return self.card2
+        elif self.winner == 2:
+            return self.card1
+        else:
+            return None
+        
+    @property
+    def texts(self):
+        return self.events.strip().splitlines()
     
     def fight(self):
         assert not self.events, self.id
@@ -269,13 +302,14 @@ class Battle(models.Model):
                 self.events += f'{self.card2} 获胜！'
             turn = not turn
         self.save()
+        return self.winner_card
 
 
 class Match(models.Model):
     
     player1 = models.ForeignKey(Player, related_name='player1_match_set', on_delete=models.CASCADE)
     player2 = models.ForeignKey(Player, related_name='player2_match_set', on_delete=models.CASCADE)
-    winner = models.ImageField(default=0)
+    winner = models.IntegerField(default=0)
     battles = models.ManyToManyField(Battle)
     
     def __str__(self):
@@ -288,13 +322,31 @@ class Match(models.Model):
     @property
     def game(self):
         return self.player1.game
+    
+    @property
+    def winner_player(self):
+        if self.winner == 1:
+            return self.player1
+        elif self.winner == 2:
+            return self.player2
+        else:
+            return None
+    
+    @property
+    def loser_player(self):
+        if self.winner == 1:
+            return self.player2
+        elif self.winner == 2:
+            return self.player1
+        else:
+            return None
 
 
 class Wild(models.Model):
     
     player = models.ForeignKey(Player, on_delete=models.CASCADE)
     card = models.ForeignKey(Card, on_delete=models.CASCADE)
-    winner = models.ImageField(default=0)
+    winner = models.IntegerField(default=0)
     battles = models.ManyToManyField(Battle)
     
     def __str__(self):
@@ -307,4 +359,8 @@ class Wild(models.Model):
     @property
     def game(self):
         return self.player.game
+    
+    @property
+    def is_win(self):
+        return self.winner == 1
 
