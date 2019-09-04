@@ -6,6 +6,9 @@ from django.db import models
 from game.systems import SYSTEM_MAP
 
 
+X_LEVEL_UP = 10
+
+
 class Skill(models.Model):
 
     name = models.CharField(max_length=50, blank=True)
@@ -56,6 +59,9 @@ class Game(models.Model):
     def init(self):
         assert not self.card_set.exists()
         assert not self.player_set.exists()
+        self.join_cards()
+            
+    def join_cards(self):
         for p in Pokemon.objects.all():
             self.card_set.create(pokemon=p, level=p.level)
             
@@ -102,6 +108,14 @@ class Player(models.Model):
     @property
     def cards(self):
         return self.card_set.order_by('status')
+    
+    @property
+    def cards1(self):
+        return self.card_set.filter(status=1)
+    
+    @property
+    def cards2(self):
+        return self.card_set.filter(status=2)
 
 
 class Card(models.Model):
@@ -126,7 +140,7 @@ class Card(models.Model):
     
     def gain_exp(self, exp):
         self.exp += exp
-        if self.exp >= self.level * 10:
+        if self.exp >= self.level * X_LEVEL_UP:
             self.level_up()
         self.save()
         
@@ -193,6 +207,10 @@ class Card(models.Model):
     def available_points(self):
         return self.level - self.pokemon.level - self.effective_points
     
+    @property
+    def level_up_exp(self):
+        return self.level * X_LEVEL_UP
+    
     def save(self, *args, **kwargs):
         if not self.skill:
             self.learn()
@@ -248,7 +266,7 @@ def get_harm(card1, card2):
 class Battle(models.Model):
     card1 = models.ForeignKey(Card, related_name='card1_battle_set', on_delete=models.CASCADE)
     card2 = models.ForeignKey(Card, related_name='card2_battle_set', on_delete=models.CASCADE)
-    events = models.TextField()
+    events = models.TextField(blank=True)
     winner = models.IntegerField(default=0)
     
     def __str__(self):
@@ -348,6 +366,7 @@ class Wild(models.Model):
     card = models.ForeignKey(Card, on_delete=models.CASCADE)
     winner = models.IntegerField(default=0)
     battles = models.ManyToManyField(Battle)
+    events = models.TextField(blank=True)
     
     def __str__(self):
         return f'{self.player} Vs {self.card}'
@@ -364,3 +383,6 @@ class Wild(models.Model):
     def is_win(self):
         return self.winner == 1
 
+    @property
+    def texts(self):
+        return self.events.strip().splitlines()

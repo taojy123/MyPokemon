@@ -23,28 +23,30 @@
 <h4>第 {{ game.round }} 回合</h4>
 {% for player in game.players %}
   <div class="player" style="margin: 30px; padding: 5px; border: 1px gray solid">
-    <p>Player Name: {{ player.name }} {% if player.turn %}[Turn]{% endif %}</p>
-    <p>Cards:</p>
-    {% for card in player.cards %}
+    <p>玩家: {{ player.name }} {% if player.turn %}[Turn]{% endif %}</p>
+    <p>手牌:</p>
+    {% for card in player.cards1 %}
       <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
         <div>{{ card.pokemon }}</div>
-        <div>system: {{ card.pokemon.system }}</div>
-        <div>Lv: {{ card.level }} [{{ card.exp }}]</div>
-        <div>Points: {{ card.available_points }}</div>
-        <div>attack: {{ card.attack }}</div>
-        <div>defense: {{ card.defense }}</div>
-        <div>hp: {{ card.hp }}</div>
-        <div>skill: {{ card.skill }}</div>
-        <div>{{ card.get_status_display }}</div>
+        <div>系: {{ card.pokemon.system }}</div>
+        <div>等级: {{ card.level }} [{{ card.exp }}/{{ card.level_up_exp }}]</div>
+        <div>加点: {{ card.available_points }}</div>
+        <div>攻击: {{ card.attack }}</div>
+        <div>防御: {{ card.defense }}</div>
+        <div>体力: {{ card.hp }}</div>
+        <div>技能: {{ card.skill }}</div>
         <div>
           Actions:
           <form action="/game/card/{{ card.id }}/action/" method="post">
+            <input type="submit" name="action" value="rest">
             <input type="submit" name="action" value="learn">
+            {% if card.available_points > 0 %}
+              <input type="submit" name="action" value="add_attack">
+              <input type="submit" name="action" value="add_defense">
+              <input type="submit" name="action" value="add_hp">
+            {% endif %}
             {% if card.can_evo %}
               <input type="submit" name="action" value="evo">
-            {% endif %}
-            {% if card.status == 2 %}
-              <input type="submit" name="action" value="out">
             {% endif %}
           </form>
         </div>
@@ -53,11 +55,37 @@
 
     <div style="clear: both"></div>
 
-    <p>Actions:</p>
+    <p>休息:</p>
+    {% for card in player.cards2 %}
+      <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
+        <div>{{ card.pokemon }}</div>
+        <div>系: {{ card.pokemon.system }}</div>
+        <div>等级: {{ card.level }} [{{ card.exp }}/{{ card.level_up_exp }}]</div>
+        <div>加点: {{ card.available_points }}</div>
+        <div>攻击: {{ card.attack }}</div>
+        <div>防御: {{ card.defense }}</div>
+        <div>体力: {{ card.hp }}</div>
+        <div>技能: {{ card.skill }}</div>
+        <div>
+          Actions:
+          <form action="/game/card/{{ card.id }}/action/" method="post">
+            <input type="submit" name="action" value="join">
+          </form>
+        </div>
+      </div>
+    {% endfor %}
 
-    <form action="/game/game/{{ game.id }}/action/" method="post">
-      <input type="submit" name="action" value="wild">
-      <input type="submit" name="action" value="match">
+    <div style="clear: both"></div>
+
+    <p>Attack:</p>
+
+    <form action="/game/game/{{ game.id }}/attack/" method="post">
+      {% for p in game.players %}
+        {% if p != player %}
+          <input type="submit" name="name" value="{{ p.name }}">
+        {% endif %}
+      {% endfor %}
+      <input type="submit" name="name" value="wild">
     </form>
 
     <div style="clear: both"></div>
