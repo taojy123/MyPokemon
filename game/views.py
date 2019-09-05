@@ -187,6 +187,6 @@ def match(request, match_id):
             messages.info(request, t)
     for t in wild.texts:
         messages.info(request, t)
-    return render(request, 'wild.html', locals())
+    return render(request, 'match.html', locals())
 
 

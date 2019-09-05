@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wild</title>
+</head>
+<body>
+
+{% if messages %}
+  <ul class="messages">
+  </ul>
+
+  {% for message in messages %}
+    <script>
+        setTimeout(function () {
+          var li = $('<li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>')
+          $('.messages').append(li)
+        }, 1000 * {{ forloop.counter }})
+    </script>
+  {% endfor %}
+{% endif %}
+
+<p>遇到野生精灵：</p>
+
+<div style="margin: 10px; padding: 5px; border: 1px gray solid">
+  <div>{{ wild.card.pokemon }}</div>
+  <div>系: {{ wild.card.pokemon.system }}</div>
+  <div>等级: {{ wild.card.level }} [{{ wild.card.exp }}/{{ wild.card.level_up_exp }}]</div>
+  <div>加点: {{ wild.card.available_points }}</div>
+  <div>攻击: {{ wild.card.attack }}</div>
+  <div>防御: {{ wild.card.defense }}</div>
+  <div>体力: {{ wild.card.hp }}</div>
+  <div>技能: {{ wild.card.skill }}</div>
+</div>
+
+
+<p>选择出战精灵：</p>
+
+{% if wild.winner == 0 %}
+  {% for card in player.cards1 %}
+    <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
+
+      <div>{{ card.pokemon }}</div>
+      <div>系: {{ card.pokemon.system }}</div>
+      <div>等级: {{ card.level }} [{{ card.exp }}/{{ card.level_up_exp }}]</div>
+      <div>加点: {{ card.available_points }}</div>
+      <div>攻击: {{ card.attack }}</div>
+      <div>防御: {{ card.defense }}</div>
+      <div>体力: {{ card.hp }}</div>
+      <div>技能: {{ card.skill }}</div>
+      <form action="/game/wild/{{ wild.id }}/fight/" method="post">
+        <input type="hidden" name="card_id" value="{{ card.id }}">
+        <input type="submit" value="出战">
+      </form>
+    </div>
+  {% endfor %}
+  
+  <div style="clear:both;"></div>
+  <form action="/game/wild/{{ wild.id }}/fight/" method="post">
+    <input type="submit" value="逃跑">
+  </form>
+{% else %}
+
+  {% if wild.winner > 0 %}
+    <div style="margin: 10px; padding: 5px; border: 1px gray solid">
+      <div>{{ battle.card1.pokemon }}</div>
+      <div>system: {{ battle.card1.pokemon.system }}</div>
+      <div>Lv: {{ battle.card1.level }} [{{ battle.card1.exp }}]</div>
+      <div>Points: {{ battle.card1.available_points }}</div>
+      <div>attack: {{ battle.card1.attack }}</div>
+      <div>defense: {{ battle.card1.defense }}</div>
+      <div>hp: {{ battle.card1.hp }}</div>
+      <div>skill: {{ battle.card1.skill }}</div>
+    </div>
+
+  {% else %}
+    <p>已逃跑</p>
+  {% endif %}
+
+  <a href="/game/game/{{ game.id }}/">回到游戏</a>
+
+{% endif %}
+
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<script>
+  $(function () {
+  })
+</script>
+</body>
+</html>
