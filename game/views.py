@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
 
-from game.models import Game, Card, Wild, Battle
+from game.models import Game, Card, Wild, Battle, Match
 from game.pokemon_init import init
 
 
@@ -109,8 +109,7 @@ def wild(request, wild_id):
     wild = get_object_or_404(Wild, id=wild_id)
     game = wild.game
     player = game.turn_player
-    assert wild.player.user == request.user
-    assert game.turn_player.user == request.user
+    assert wild.player.user == player.user == request.user
     battle = wild.battles.first()
     if battle:
         for t in battle.texts:
@@ -176,17 +175,12 @@ def fight(request, wild_id):
 
 @login_required
 def match(request, match_id):
-    match = get_object_or_404(Wild, id=match_id)
+    match = get_object_or_404(Match, id=match_id)
     game = match.game
-    player = game.turn_player
-    assert wild.player.user == request.user
-    assert game.turn_player.user == request.user
-    battle = wild.battles.first()
-    if battle:
-        for t in battle.texts:
-            messages.info(request, t)
-    for t in wild.texts:
-        messages.info(request, t)
+    player = request.user.player_set.get(game=game)
+    assert player in [match.player1, match.player2]
+    assert game.turn_player == match.player1
+    battles = match.battle_list
     return render(request, 'match.html', locals())
 
 

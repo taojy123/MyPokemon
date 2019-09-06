@@ -20,7 +20,19 @@
   {% endfor %}
 {% endif %}
 
-<p>遇到野生精灵：</p>
+<h1>对战</h1>
+
+<p>{{ match.step_display }}</p>
+
+
+<div class="battles">
+  {% for battle in match.battle_list %}
+    <div class="battle"></div>
+  {% endfor %}
+</div>
+
+
+<p>{{ match.player1 }}</p>
 
 <div style="margin: 10px; padding: 5px; border: 1px gray solid">
   <div>{{ wild.card.pokemon }}</div>
@@ -34,10 +46,10 @@
 </div>
 
 
-<p>选择出战精灵：</p>
+<p>{{ match.player2 }}</p>
 
-{% if wild.winner == 0 %}
-  {% for card in player.cards1 %}
+{% if match.step_code == 3 %}
+  {% for card in match.player2.cards1 %}
     <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
 
       <div>{{ card.pokemon }}</div>
@@ -48,38 +60,19 @@
       <div>防御: {{ card.defense }}</div>
       <div>体力: {{ card.hp }}</div>
       <div>技能: {{ card.skill }}</div>
-      <form action="/game/wild/{{ wild.id }}/fight/" method="post">
+      <form action="/game/match/{{ match.id }}/fight/" method="post">
         <input type="hidden" name="card_id" value="{{ card.id }}">
         <input type="submit" value="出战">
       </form>
     </div>
   {% endfor %}
-  
-  <div style="clear:both;"></div>
-  <form action="/game/wild/{{ wild.id }}/fight/" method="post">
-    <input type="submit" value="逃跑">
-  </form>
-{% else %}
-
-  {% if wild.winner > 0 %}
-    <div style="margin: 10px; padding: 5px; border: 1px gray solid">
-      <div>{{ battle.card1.pokemon }}</div>
-      <div>system: {{ battle.card1.pokemon.system }}</div>
-      <div>Lv: {{ battle.card1.level }} [{{ battle.card1.exp }}]</div>
-      <div>Points: {{ battle.card1.available_points }}</div>
-      <div>attack: {{ battle.card1.attack }}</div>
-      <div>defense: {{ battle.card1.defense }}</div>
-      <div>hp: {{ battle.card1.hp }}</div>
-      <div>skill: {{ battle.card1.skill }}</div>
-    </div>
-
-  {% else %}
-    <p>已逃跑</p>
-  {% endif %}
-
-  <a href="/game/game/{{ game.id }}/">回到游戏</a>
 
 {% endif %}
+
+{% if match.winner > 0 %}
+  <a href="/game/game/{{ game.id }}/">回到游戏</a>
+{% endif %}
+
 
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 <script>

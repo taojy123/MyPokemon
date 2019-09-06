@@ -334,6 +334,26 @@ class Match(models.Model):
         return f'{self.player1} VS {self.player1}'
     
     @property
+    def step(self):
+        if self.battles.filter(winner=0).exists():
+            return 0, f'正在战斗'
+        if not self.player2.cards1.exists():
+            return 1, f'{self.player1} 获得胜利！'
+        if not self.player1.cards1.exists():
+            return 2, f'{self.player2} 获得胜利！'
+        if self.battles.filter(card1__isnull=False, card2__isnull=True).exists():
+            return 3, f'等待 {self.player2} 选择出战精灵'
+        return 4, f'等待 {self.player1} 选择出战精灵'
+    
+    @property
+    def step_code(self):
+        return self.step[0]
+    
+    @property
+    def step_display(self):
+        return self.step[1]
+    
+    @property
     def battle_list(self):
         return self.battles.order_by('id')
     
