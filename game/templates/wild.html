@@ -20,6 +20,8 @@
   {% endfor %}
 {% endif %}
 
+<p>I am {{ request.user }}</p>
+
 <p>遇到野生精灵：</p>
 
 <div style="margin: 10px; padding: 5px; border: 1px gray solid">
@@ -37,7 +39,7 @@
 <p>选择出战精灵：</p>
 
 {% if wild.winner == 0 %}
-  {% for card in player.cards1 %}
+  {% for card in wild.player.cards1 %}
     <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
 
       <div>{{ card.pokemon }}</div>

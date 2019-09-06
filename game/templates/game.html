@@ -5,7 +5,10 @@
   <title>Pokemon Card</title>
 </head>
 <body>
-<form action="/game/add_player/" method="post">
+
+<p>I am {{ request.user }}</p>
+
+<form action="/game/join/" method="post">
   加入游戏
   <input type="hidden" name="game_id" value="{{ game.id }}">
   AI<input type="checkbox" name="is_ai">
@@ -77,18 +80,22 @@
 
     <div style="clear: both"></div>
 
-    <p>Attack:</p>
+    {% if player.cards1 %}
 
-    <form action="/game/game/{{ game.id }}/attack/" method="post">
-      {% for p in game.players %}
-        {% if p != player %}
-          <input type="submit" name="name" value="{{ p.name }}">
-        {% endif %}
-      {% endfor %}
-      <input type="submit" name="name" value="wild">
-    </form>
+        <p>Attack:</p>
 
-    <div style="clear: both"></div>
+        <form action="/game/game/{{ game.id }}/attack/" method="post">
+          {% for p in game.players %}
+            {% if p != player %}
+              <input type="submit" name="name" value="{{ p.name }}">
+            {% endif %}
+          {% endfor %}
+          <input type="submit" name="name" value="wild">
+        </form>
+
+        <div style="clear: both"></div>
+    {% endif %}
+
   </div>
 {% endfor %}
 

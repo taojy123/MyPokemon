@@ -64,8 +64,8 @@ class Game(models.Model):
     def join_cards(self):
         for p in Pokemon.objects.all():
             self.card_set.create(pokemon=p, level=p.level)
-            
-    def add_player(self, user=None, init_card=None):
+
+    def join_game(self, user=None, init_card=None):
         if user:
             if self.player_set.filter(user=user).exists():
                 return self.player_set.filter(user=user).first()
@@ -212,9 +212,9 @@ class Card(models.Model):
         return self.level * X_LEVEL_UP
     
     def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
         if not self.skill:
             self.learn()
-        return super().save(*args, **kwargs)
 
 
 class ExtraPoint(models.Model):
@@ -264,8 +264,8 @@ def get_harm(card1, card2):
     
 
 class Battle(models.Model):
-    card1 = models.ForeignKey(Card, related_name='card1_battle_set', on_delete=models.CASCADE)
-    card2 = models.ForeignKey(Card, related_name='card2_battle_set', on_delete=models.CASCADE)
+    card1 = models.ForeignKey(Card, null=True, blank=True, related_name='card1_battle_set', on_delete=models.CASCADE)
+    card2 = models.ForeignKey(Card, null=True, blank=True, related_name='card2_battle_set', on_delete=models.CASCADE)
     events = models.TextField(blank=True)
     winner = models.IntegerField(default=0)
     
@@ -328,6 +328,7 @@ class Match(models.Model):
     player1 = models.ForeignKey(Player, related_name='player1_match_set', on_delete=models.CASCADE)
     player2 = models.ForeignKey(Player, related_name='player2_match_set', on_delete=models.CASCADE)
     winner = models.IntegerField(default=0)
+    events = models.TextField(blank=True)
     battles = models.ManyToManyField(Battle)
     
     def __str__(self):
@@ -335,7 +336,7 @@ class Match(models.Model):
     
     @property
     def step(self):
-        if self.battles.filter(winner=0).exists():
+        if self.battles.filter(card1__isnull=False, card2__isnull=False, winner=0).exists():
             return 0, f'正在战斗'
         if not self.player2.cards1.exists():
             return 1, f'{self.player1} 获得胜利！'
@@ -379,14 +380,18 @@ class Match(models.Model):
         else:
             return None
 
+    @property
+    def texts(self):
+        return self.events.strip().splitlines()
+
 
 class Wild(models.Model):
     
     player = models.ForeignKey(Player, on_delete=models.CASCADE)
     card = models.ForeignKey(Card, on_delete=models.CASCADE)
     winner = models.IntegerField(default=0)
-    battles = models.ManyToManyField(Battle)
     events = models.TextField(blank=True)
+    battles = models.ManyToManyField(Battle)
     
     def __str__(self):
         return f'{self.player} Vs {self.card}'

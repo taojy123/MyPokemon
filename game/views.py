@@ -18,10 +18,10 @@ def pokemon_init(request):
 def new_game(request):
     name = request.POST.get('name')
     if not name:
-        name = 'test'
+        name = 'test' + str(random.randint(100, 999))
     game, _ = Game.objects.get_or_create(name=name)
     game.init()
-    player = game.add_player(request.user)
+    player = game.join_game(request.user)
     player.turn = True
     player.save()
     return HttpResponseRedirect(f'/game/game/{game.id}/')
@@ -34,16 +34,16 @@ def game(request, game_id):
 
 
 @login_required
-def add_player(request):
+def join_game(request):
     game_id = request.POST.get('game_id')
-    init_card_id = request.POST.get('init_card_id')
+    init_card_id = request.POST.get('init_card_id', 0)
     is_ai = request.POST.get('is_ai')
     game = get_object_or_404(Game, id=game_id)
     if is_ai:
-        game.add_player()
+        game.join_game()
     else:
         init_card = Card.objects.filter(game=game, level=1, status=0, player=None, id=init_card_id).first()
-        game.add_player(request.user, init_card)
+        game.join_game(request.user, init_card)
     return HttpResponseRedirect(f'/game/game/{game.id}/')
 
 
@@ -108,8 +108,7 @@ def game_attack(request, game_id):
 def wild(request, wild_id):
     wild = get_object_or_404(Wild, id=wild_id)
     game = wild.game
-    player = game.turn_player
-    assert wild.player.user == player.user == request.user
+    assert wild.player.user == request.user
     battle = wild.battles.first()
     if battle:
         for t in battle.texts:
@@ -120,7 +119,7 @@ def wild(request, wild_id):
 
 
 @login_required
-def fight(request, wild_id):
+def wild_fight(request, wild_id):
     wild = get_object_or_404(Wild, id=wild_id)
     game = wild.game
     player = game.turn_player
@@ -159,7 +158,7 @@ def fight(request, wild_id):
                 wild.events += f'捕获了 {wild_card.pokemon}!\n'
             
         else:
-            wild.events += f'战斗失败，{card} 必须休息\n'
+            wild.events += f'战斗失败，{card} 进入精灵中心休息\n'
             card.status = 2
             card.save()
     else:
@@ -179,8 +178,78 @@ def match(request, match_id):
     game = match.game
     player = request.user.player_set.get(game=game)
     assert player in [match.player1, match.player2]
-    assert game.turn_player == match.player1
     battles = match.battle_list
+    if match.step_code in [1, 2] and not match.winner:
+        match.winner = match.step_code
+        match.events += f'{match.winner_player} 获得最终胜利!'
+        match.save()
+        game.next_turn()
     return render(request, 'match.html', locals())
+
+
+@login_required
+def match_fight(request, match_id):
+    match = get_object_or_404(Match, id=match_id)
+    game = match.game
+    player = request.user.player_set.get(game=game)
+    assert player in [match.player1, match.player2]
+    assert game.turn_player == match.player1
+
+    card_id = request.POST.get('card_id')
+    card = get_object_or_404(Card, game=game, status=1, id=card_id)
+    assert card.player == player
+
+    if player == match.player1:
+        assert match.step_code == 4
+        match.battles.create(card1=card)
+    else:
+        assert match.step_code == 3
+        battle = match.battles.order_by('-id').first()
+        assert not battle.card2
+        battle.card2 = card
+        battle.save()
+        battle.fight()
+
+        if battle.winner == 1:
+            match.events += f'{battle.card1} 战胜 {battle.card2}\n'
+
+            total_exp = battle.card2.attack + battle.card2.defense + battle.card2.hp
+            remain_cards = match.player1.card_set.filter(status=1).exclude(id=battle.card1.id)
+            remain_count = remain_cards.count()
+            if remain_count <= 0:
+                battle.card1.gain_exp(total_exp)
+                match.events += f'{battle.card1.pokemon} 获得 {total_exp} 经验值\n'
+            else:
+                battle.card1.gain_exp(total_exp / 2)
+                match.events += f'{battle.card1.pokemon} 获得 {total_exp / 2} 经验值\n'
+                for c in remain_cards:
+                    c.gain_exp(total_exp / 2 / remain_count)
+                    match.events += f'{c.pokemon} 获得 {total_exp / 2 / remain_count} 经验值\n'
+
+            match.events += f'{battle.card2} 进入精灵中心休息\n'
+            battle.card2.status = 2
+            battle.card2.save()
+
+        elif battle.winner == 2:
+            match.events += f'{battle.card2} 战胜 {battle.card1}\n'
+
+            total_exp = battle.card1.attack + battle.card1.defense + battle.card1.hp
+            remain_cards = match.player2.card_set.filter(status=1).exclude(id=battle.card2.id)
+            remain_count = remain_cards.count()
+            if remain_count <= 0:
+                battle.card2.gain_exp(total_exp)
+                match.events += f'{battle.card2.pokemon} 获得 {total_exp} 经验值\n'
+            else:
+                battle.card2.gain_exp(total_exp / 2)
+                match.events += f'{battle.card2.pokemon} 获得 {total_exp / 2} 经验值\n'
+                for c in remain_cards:
+                    c.gain_exp(total_exp / 2 / remain_count)
+                    match.events += f'{c.pokemon} 获得 {total_exp / 2 / remain_count} 经验值\n'
+
+            match.events += f'{battle.card1} 进入精灵中心休息\n'
+            battle.card1.status = 2
+            battle.card1.save()
+
+    return HttpResponseRedirect(f'/game/match/{match.id}/')
 
 

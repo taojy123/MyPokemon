@@ -20,38 +20,57 @@
   {% endfor %}
 {% endif %}
 
+<p>I am {{ request.user }}</p>
+
 <h1>对战</h1>
+
+<div class="battles">
+  {% for battle in match.battle_list %}
+    <div class="battle">
+        <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
+          <div>{{ battle.card1.pokemon }}</div>
+          <div>系: {{ battle.card1.pokemon.system }}</div>
+          <div>等级: {{ battle.card1.level }} [{{ battle.card1.exp }}/{{ battle.card1.level_up_exp }}]</div>
+          <div>加点: {{ battle.card1.available_points }}</div>
+          <div>攻击: {{ battle.card1.attack }}</div>
+          <div>防御: {{ battle.card1.defense }}</div>
+          <div>体力: {{ battle.card1.hp }}</div>
+          <div>技能: {{ battle.card1.skill }}</div>
+            {% if battle.winner == 1 %}
+                [win]
+            {% endif %}
+        </div>
+        <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
+          <div>{{ battle.card2.pokemon }}</div>
+          <div>系: {{ battle.card2.pokemon.system }}</div>
+          <div>等级: {{ battle.card2.level }} [{{ battle.card2.exp }}/{{ battle.card2.level_up_exp }}]</div>
+          <div>加点: {{ battle.card2.available_points }}</div>
+          <div>攻击: {{ battle.card2.attack }}</div>
+          <div>防御: {{ battle.card2.defense }}</div>
+          <div>体力: {{ battle.card2.hp }}</div>
+          <div>技能: {{ battle.card2.skill }}</div>
+            {% if battle.winner == 2 %}
+                [win]
+            {% endif %}
+        </div>
+        <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
+            {% for text in battle.texts %}
+                <p>{{ text }}</p>
+            {% endfor %}
+        </div>
+    </div>
+  {% endfor %}
+</div>
+
+<div style="clear: both"></div>
+
 
 <p>{{ match.step_display }}</p>
 
 
-<div class="battles">
-  {% for battle in match.battle_list %}
-    <div class="battle"></div>
-  {% endfor %}
-</div>
-
-
-<p>{{ match.player1 }}</p>
-
-<div style="margin: 10px; padding: 5px; border: 1px gray solid">
-  <div>{{ wild.card.pokemon }}</div>
-  <div>系: {{ wild.card.pokemon.system }}</div>
-  <div>等级: {{ wild.card.level }} [{{ wild.card.exp }}/{{ wild.card.level_up_exp }}]</div>
-  <div>加点: {{ wild.card.available_points }}</div>
-  <div>攻击: {{ wild.card.attack }}</div>
-  <div>防御: {{ wild.card.defense }}</div>
-  <div>体力: {{ wild.card.hp }}</div>
-  <div>技能: {{ wild.card.skill }}</div>
-</div>
-
-
-<p>{{ match.player2 }}</p>
-
-{% if match.step_code == 3 %}
-  {% for card in match.player2.cards1 %}
+{% if match.step_code == 4 %}
+  {% for card in match.player1.cards1 %}
     <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
-
       <div>{{ card.pokemon }}</div>
       <div>系: {{ card.pokemon.system }}</div>
       <div>等级: {{ card.level }} [{{ card.exp }}/{{ card.level_up_exp }}]</div>
@@ -66,8 +85,36 @@
       </form>
     </div>
   {% endfor %}
-
 {% endif %}
+
+
+
+{% if match.step_code == 3 %}
+  {% for card in match.player2.cards1 %}
+    <div style="float:left; margin: 10px; padding: 5px; border: 1px gray solid">
+      <div>{{ card.pokemon }}</div>
+      <div>系: {{ card.pokemon.system }}</div>
+      <div>等级: {{ card.level }} [{{ card.exp }}/{{ card.level_up_exp }}]</div>
+      <div>加点: {{ card.available_points }}</div>
+      <div>攻击: {{ card.attack }}</div>
+      <div>防御: {{ card.defense }}</div>
+      <div>体力: {{ card.hp }}</div>
+      <div>技能: {{ card.skill }}</div>
+      <form action="/game/match/{{ match.id }}/fight/" method="post">
+        <input type="hidden" name="card_id" value="{{ card.id }}">
+        <input type="submit" value="出战">
+      </form>
+    </div>
+  {% endfor %}
+{% endif %}
+
+
+<div style="clear: both"></div>
+
+{% for text in match.texts %}
+    <p>{{ text }}</p>
+{% endfor %}
+
 
 {% if match.winner > 0 %}
   <a href="/game/game/{{ game.id }}/">回到游戏</a>

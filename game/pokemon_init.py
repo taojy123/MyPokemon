@@ -1,3 +1,5 @@
+from django.contrib.auth.models import User
+
 from game.models import Skill, Pokemon
 
 skills = [
@@ -1592,6 +1594,20 @@ pokemons = [
 
 
 def init():
+
+    if not User.objects.exists():
+        u = User.objects.create(username='admin', is_staff=True, is_superuser=True)
+        u.set_password('admin')
+        u.save()
+
+        u = User.objects.create(username='aa1', is_staff=True)
+        u.set_password('aa1')
+        u.save()
+
+        u = User.objects.create(username='aa2', is_staff=True)
+        u.set_password('aa2')
+        u.save()
+
     
     if not Skill.objects.exists():
         print('init skills')
