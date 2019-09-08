@@ -15,4 +15,5 @@ urlpatterns = [
     path('wild/<int:wild_id>/fight/', wild_fight),
     path('match/<int:match_id>/', match),
     path('match/<int:match_id>/fight/', match_fight),
+    # path('api/', api),
 ]

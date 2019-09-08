@@ -16,7 +16,7 @@ class Skill(models.Model):
     power = models.IntegerField(default=0)
     
     def __str__(self):
-        return f'{self.name}[{self.system}]'
+        return f'{self.name}[{self.system}{self.power}]'
 
 
 class Pokemon(models.Model):
@@ -39,6 +39,7 @@ class Pokemon(models.Model):
 class Game(models.Model):
     name = models.CharField(max_length=50, blank=True)
     round = models.IntegerField(default=1)
+    block = models.BooleanField(default=False)
     
     def __str__(self):
         return self.name
@@ -55,7 +56,21 @@ class Game(models.Model):
     def turn_player(self):
         assert self.player_set.filter(turn=True).count() == 1, self.id
         return self.player_set.get(turn=True)
-    
+
+    @classmethod
+    def new(cls, user, init_card=None, name=''):
+        if not name:
+            name = 'test' + str(random.randint(100, 999))
+        game = Game.objects.filter(name=name).first()
+        if game:
+            return game
+        game = Game.objects.create(name=name)
+        game.init()
+        player = game.join_game(user, init_card)
+        player.turn = True
+        player.save()
+        return game
+
     def init(self):
         assert not self.card_set.exists()
         assert not self.player_set.exists()
@@ -81,8 +96,34 @@ class Game(models.Model):
         init_card.status = 1
         init_card.save()
         return player
-    
+
+    def attack_player(self, target_player):
+        assert not self.block
+        player = self.turn_player
+        assert player != target_player
+        match = player.player1_match_set.create(player2=target_player)
+        self.block = True
+        self.save()
+        return match
+
+    def attack_wild(self):
+        assert not self.block
+        player = self.turn_player
+        # 牌堆里没有进化过的原始精灵
+        ori_cards = self.card_set.filter(status=0, pokemon__pokemon__isnull=True)
+        if not ori_cards.exists():
+            self.join_cards()
+            ori_cards = self.card_set.filter(status=0, pokemon__pokemon__isnull=True)
+        wild_card = random.choice(ori_cards)
+        assert not wild_card.player
+        wild = player.wild_set.create(card=wild_card)
+        self.block = True
+        self.save()
+        return wild
+
     def next_turn(self):
+        self.block = False
+        self.save()
         player = self.players.filter(id__gt=self.turn_player.id).first()
         if not player:
             player = self.players.first()
@@ -123,7 +164,7 @@ class Card(models.Model):
     STATUS_CHOICES = (
         (-1, '弃牌'),
         (0, '牌堆'),
-        (1, '手牌'),
+        (1, '上场'),
         (2, '休息'),
     )
 
@@ -136,7 +177,7 @@ class Card(models.Model):
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
 
     def __str__(self):
-        return f'{self.player or "Free"}:{self.pokemon}'
+        return f'{self.player or "野生"}的{self.pokemon}'
     
     def gain_exp(self, exp):
         self.exp += exp
@@ -148,6 +189,46 @@ class Card(models.Model):
         self.level += 1
         self.exp = 0
         self.save()
+
+    def action(self, action):
+        game = self.game
+
+        assert not game.block
+        assert self.player == game.turn_player
+
+        if action == 'learn':
+            skill = self.learn()
+            game.next_turn()
+            return f'{self.pokemon} 学会了技能 {skill}'
+
+        elif action == 'evo':
+            evo_card = self.evo()
+            if evo_card:
+                game.next_turn()
+                return f'{self.pokemon} 进化为 {evo_card.pokemon}!'
+            return '无法进化，回合继续'
+
+        elif action in ['add_attack', 'defense', 'hp']:
+            kind = action[4:]
+            if self.available_points > 0:
+                self.extrapoint_set.create(kind=kind)
+                game.next_turn()
+                return f'{self} 增加 1 点 {kind}'
+
+        elif action == 'rest':
+            self.status = 2
+            self.save()
+            return f'{self} 回到精灵中心休息，回合继续'
+
+        elif action == 'join':
+            if self.player.cards1.count() < 6:
+                self.status = 1
+                self.save()
+                game.next_turn()
+                return f'{self} 上场准备战斗'
+            return '上场精灵已满，回合继续'
+
+        return '没有事情发生，回合继续'
         
     def evo(self):
         if not self.can_evo:
@@ -240,16 +321,16 @@ def get_harm(card1, card2):
         if y > x:
             x = y
         
-    if random.randint(1, 10) == 1:
-        # 十分之一几率被闪避
+    if random.randint(1, 5) == 1:
+        # 五分之一几率被闪避
         harm = 0
         text = f'{card1} 使用 {card1.skill} 攻击 {card2}，没有命中。'
     else:
         harm = card1.attack + card1.skill.power * x - card2.defense
         harm = max(harm, 1)
         xt = st = ''
-        if random.randint(1, 10) == 1:
-            # 十分之一几率致命一击
+        if random.randint(1, 5) == 1:
+            # 五分之一几率致命一击
             harm *= 2
             st = '，致命一击'
         if x == 0:
@@ -384,6 +465,67 @@ class Match(models.Model):
     def texts(self):
         return self.events.strip().splitlines()
 
+    def fight(self, card):
+        assert card.status == 1
+        assert card.game == self.game
+        player = card.player
+        if player == self.player1:
+            assert self.step_code == 4
+            self.battles.create(card1=card)
+        elif player == self.player2:
+            assert self.step_code == 3
+            battle = self.battles.order_by('-id').first()
+            assert not battle.card2
+            battle.card2 = card
+            battle.save()
+            battle.fight()
+
+            if battle.winner == 1:
+                self.events += f'{battle.card1} 战胜 {battle.card2}\n'
+
+                total_exp = battle.card2.attack + battle.card2.defense + battle.card2.hp
+                remain_cards = self.player1.card_set.filter(status=1).exclude(id=battle.card1.id)
+                remain_count = remain_cards.count()
+                if remain_count <= 0:
+                    battle.card1.gain_exp(total_exp)
+                    self.events += f'{battle.card1.pokemon} 获得 {total_exp} 经验值\n'
+                else:
+                    battle.card1.gain_exp(total_exp / 2)
+                    self.events += f'{battle.card1.pokemon} 获得 {total_exp / 2} 经验值\n'
+                    for c in remain_cards:
+                        c.gain_exp(total_exp / 2 / remain_count)
+                        self.events += f'{c.pokemon} 获得 {total_exp / 2 / remain_count} 经验值\n'
+
+                self.events += f'{battle.card2} 进入精灵中心休息\n'
+                battle.card2.status = 2
+                battle.card2.save()
+
+            elif battle.winner == 2:
+                self.events += f'{battle.card2} 战胜 {battle.card1}\n'
+
+                total_exp = battle.card1.attack + battle.card1.defense + battle.card1.hp
+                remain_cards = self.player2.card_set.filter(status=1).exclude(id=battle.card2.id)
+                remain_count = remain_cards.count()
+                if remain_count <= 0:
+                    battle.card2.gain_exp(total_exp)
+                    self.events += f'{battle.card2.pokemon} 获得 {total_exp} 经验值\n'
+                else:
+                    battle.card2.gain_exp(total_exp / 2)
+                    self.events += f'{battle.card2.pokemon} 获得 {total_exp / 2} 经验值\n'
+                    for c in remain_cards:
+                        c.gain_exp(total_exp / 2 / remain_count)
+                        self.events += f'{c.pokemon} 获得 {total_exp / 2 / remain_count} 经验值\n'
+
+                self.events += f'{battle.card1} 进入精灵中心休息\n'
+                battle.card1.status = 2
+                battle.card1.save()
+
+            else:
+                assert False
+        else:
+            assert False
+
+
 
 class Wild(models.Model):
     
@@ -411,3 +553,49 @@ class Wild(models.Model):
     @property
     def texts(self):
         return self.events.strip().splitlines()
+
+    def fight(self, card=None):
+        player = self.player
+        game = self.game
+        assert player == game.turn_player
+        if card:
+            battle = Battle.objects.create(card1=card, card2=self.card)
+            battle.fight()
+            self.battles.add(battle)
+            self.winner = battle.winner
+            self.save()
+            if self.is_win:
+                wild_card = self.card
+                self.events += f'战胜 {wild_card}\n'
+
+                total_exp = wild_card.attack + wild_card.defense + wild_card.hp
+                remain_cards = player.card_set.filter(status=1).exclude(id=card.id)
+                remain_count = remain_cards.count()
+                if remain_count <= 0:
+                    card.gain_exp(total_exp)
+                    self.events += f'{card.pokemon} 获得 {total_exp} 经验值\n'
+                else:
+                    card.gain_exp(total_exp / 2)
+                    self.events += f'{card.pokemon} 获得 {total_exp / 2} 经验值\n'
+                    for c in remain_cards:
+                        c.gain_exp(total_exp / 2 / remain_count)
+                        self.events += f'{c.pokemon} 获得 {total_exp / 2 / remain_count} 经验值\n'
+
+                if random.randint(1, 5) == 1:
+                    # 五分之一几率捕获精灵
+                    wild_card.player = player
+                    wild_card.status = 1
+                    wild_card.save()
+                    self.events += f'捕获了 {wild_card.pokemon}!\n'
+
+            else:
+                self.events += f'战斗失败，{card} 进入精灵中心休息\n'
+                card.status = 2
+                card.save()
+        else:
+            self.winner = -1
+            self.save()
+            self.events += f'{self.player} 逃跑了\n'
+
+        self.save()
+        game.next_turn()
