@@ -5,6 +5,8 @@
       <h1 class="title">
         pmui
       </h1>
+      <nuxt-link to="/">Home page</nuxt-link>
+      <nuxt-link to="/test">test</nuxt-link>
       <h2 class="subtitle">
         Pokemon Card UI
       </h2>

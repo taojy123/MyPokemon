@@ -11,8 +11,9 @@
     "generate": "nuxt generate"
   },
   "dependencies": {
-    "nuxt": "^2.0.0",
-    "@nuxtjs/axios": "^5.3.6"
+    "@nuxtjs/axios": "^5.3.6",
+    "mint-ui": "^2.2.13",
+    "nuxt": "^2.0.0"
   },
   "devDependencies": {}
 }
