@@ -17,6 +17,14 @@ class Skill(models.Model):
     
     def __str__(self):
         return f'{self.name}[{self.system}{self.power}]'
+    
+    def to_dict(self):
+        return {
+            'str': str(self),
+            'name': self.name,
+            'system': self.system,
+            'power': self.power,
+        }
 
 
 class Pokemon(models.Model):
@@ -34,6 +42,21 @@ class Pokemon(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def to_dict(self):
+        return {
+            'str': str(self),
+            'name': self.name,
+            'no': self.no,
+            'system': self.system,
+            'default_skill': self.default_skill.to_dict() if self.default_skill else None,
+            'attack': self.attack,
+            'defense': self.defense,
+            'hp': self.hp,
+            'level': self.level,
+            'evo_to': self.evo_to.to_dict() if self.evo_to else None,
+            'pic': self.pic,
+        }
 
 
 class Game(models.Model):
@@ -43,6 +66,20 @@ class Game(models.Model):
     
     def __str__(self):
         return self.name
+
+    @classmethod
+    def new(cls, user, name='', init_pokemon=None):
+        if not name:
+            name = 'test' + str(random.randint(100, 999))
+        game = Game.objects.filter(name=name).first()
+        if game:
+            return game
+        game = Game.objects.create(name=name)
+        game.init()
+        player = game.join_game(user, init_pokemon)
+        player.turn = True
+        player.save()
+        return game
     
     @property
     def owner(self):
@@ -56,20 +93,58 @@ class Game(models.Model):
     def turn_player(self):
         assert self.player_set.filter(turn=True).count() == 1, self.id
         return self.player_set.get(turn=True)
+    
+    @property
+    def welcome(self):
+        return f'欢迎来到 {self.owner} 创建的宠物小精灵世界!'
+    
+    @property
+    def focus(self):
+        wild = Wild.objects.filter(player__game=self, winner=0).order_by('-id').first()
+        if wild:
+            return wild
+        match = Match.objects.filter(player1__game=self, winner=0).order_by('-id').first()
+        if match:
+            return match
+        assert not self.block
+        return self
+    
+    @property
+    def focus_dict(self):
+        focus = self.focus
+        if isinstance(focus, Wild):
+            category = 'wild'
+        elif isinstance(focus, Match):
+            category = 'match'
+        else:
+            category = 'game'
+        return {
+            'category': category,
+            'id': focus.id
+        }
 
-    @classmethod
-    def new(cls, user, init_card=None, name=''):
-        if not name:
-            name = 'test' + str(random.randint(100, 999))
-        game = Game.objects.filter(name=name).first()
-        if game:
-            return game
-        game = Game.objects.create(name=name)
-        game.init()
-        player = game.join_game(user, init_card)
-        player.turn = True
-        player.save()
-        return game
+    @property
+    def step(self):
+        focus = self.focus
+        if isinstance(focus, Game):
+            return 0, f'等待 {focus.turn_player} 操作'
+        elif isinstance(focus, Match):
+            return 1, f'{focus.player1} 与 {focus.player2} 正在对战'
+        elif isinstance(focus, Wild):
+            return 1, f'{focus.player} 野外遭遇 {focus.card}'
+        assert False
+
+    @property
+    def step_code(self):
+        return self.step[0]
+
+    @property
+    def step_display(self):
+        return self.step[1]
+    
+    @property
+    def selectable_cards(self):
+        return Card.objects.filter(game=self, level=1, status=0, player=None)
 
     def init(self):
         assert not self.card_set.exists()
@@ -80,18 +155,22 @@ class Game(models.Model):
         for p in Pokemon.objects.all():
             self.card_set.create(pokemon=p, level=p.level)
 
-    def join_game(self, user=None, init_card=None):
+    def join_game(self, user=None, init_pokemon=None):
         if user:
             if self.player_set.filter(user=user).exists():
                 return self.player_set.filter(user=user).first()
             player = self.player_set.create(user=user, name=user.username)
         else:
-            player = self.player_set.create(is_ai=True, name='AI')
-            
-        if not init_card:
-            cards = Card.objects.filter(game=self, level=1, status=0, player=None)
-            init_card = random.choice(cards)
-            
+            name = f'AI{random.randint(100, 999)}'
+            player = self.player_set.create(is_ai=True, name=name)
+
+        selectable_cards = self.selectable_cards
+        if init_pokemon:
+            init_card = selectable_cards.filter(pokemon=init_pokemon).first()
+        else:
+            init_card = random.choice(selectable_cards)
+
+        assert init_card
         init_card.player = player
         init_card.status = 1
         init_card.save()
@@ -133,6 +212,23 @@ class Game(models.Model):
         player.turn = True
         player.save()
         return player
+    
+    def to_dict(self):
+        return {
+            'str': str(self),
+            'name': self.name,
+            'round': self.round,
+            'block': self.block,
+            'owner': self.owner.to_dict(),
+            'turn_player': self.turn_player.to_dict(),
+            'players': [p.to_dict() for p in self.players],
+            'welcome': self.welcome,
+            'focus': self.focus_dict,
+            'step': self.step,
+            'step_code': self.step_code,
+            'step_display': self.step_display,
+            'selectable_cards': [c.to_dict() for c in self.selectable_cards],
+        }
 
 
 class Player(models.Model):
@@ -157,6 +253,20 @@ class Player(models.Model):
     @property
     def cards2(self):
         return self.card_set.filter(status=2)
+    
+    def to_dict(self):
+        return {
+            'str': str(self),
+            'id': self.id,
+            'name': self.name,
+            'user_id': self.user.id if self.user else None,
+            'username': self.user.username if self.user else None,
+            'is_ai': self.is_ai,
+            'turn': self.turn,
+            'cards': [card.to_dict() for card in self.cards],
+            'cards1': [card.to_dict() for card in self.cards1],
+            'cards2': [card.to_dict() for card in self.cards2],
+        }
 
 
 class Card(models.Model):
@@ -254,6 +364,23 @@ class Card(models.Model):
         self.skill = skill
         self.save()
         return skill
+    
+    def to_dict(self):
+        return {
+            'str': str(self),
+            'pokemon': self.pokemon.to_dict(),
+            'skill': self.skill.to_dict() if self.skill else None,
+            'level': self.level,
+            'exp': self.exp,
+            'status': self.status,
+            'systems': self.systems,
+            'attack': self.attack,
+            'defense': self.defense,
+            'hp': self.hp,
+            'effective_points': self.effective_points,
+            'available_points': self.available_points,
+            'level_up_exp': self.level_up_exp,
+        }
 
     @property
     def can_evo(self):
@@ -402,6 +529,17 @@ class Battle(models.Model):
             turn = not turn
         self.save()
         return self.winner_card
+    
+    def to_dict(self):
+        return {
+            'str': str(self),
+            'card1': self.card1.to_dict() if self.card1 else None,
+            'card2': self.card2.to_dict() if self.card2 else None,
+            'texts': self.texts,
+            'winner': self.winner,
+            'winner_card': self.winner_card.to_dict() if self.winner_card else None,
+            'loser_card': self.loser_card.to_dict() if self.loser_card else None,
+        }
 
 
 class Match(models.Model):
@@ -525,6 +663,21 @@ class Match(models.Model):
         else:
             assert False
 
+    def to_dict(self):
+        return {
+            'str': str(self),
+            'category': 'match',
+            'player1': self.player1.to_dict(),
+            'player2': self.player2.to_dict(),
+            'winner': self.winner,
+            'battles': [b.to_dict for b in self.battle_list],
+            'winner_player': self.winner_player.to_dict() if self.winner_player else None,
+            'loser_player': self.loser_player.to_dict() if self.loser_player else None,
+            'texts': self.texts,
+            'step': self.step,
+            'step_code': self.step_code,
+            'step_display': self.step_display,
+        }
 
 
 class Wild(models.Model):
@@ -554,6 +707,27 @@ class Wild(models.Model):
     def texts(self):
         return self.events.strip().splitlines()
 
+    @property
+    def step(self):
+        if self.battles.filter(winner=0).exists():
+            return 0, f'正在战斗'
+        if self.winner == -1:
+            return 1, f'{self.player} 逃跑了'
+        if self.winner == 1:
+            return 2, f'{self.player} 获得胜利！'
+        if self.winner == 2:
+            return 3, f'{self.player} 被打败了'
+        assert not self.battles.exists()
+        return 4, f'等待 {self.player} 选择出战精灵'
+
+    @property
+    def step_code(self):
+        return self.step[0]
+
+    @property
+    def step_display(self):
+        return self.step[1]
+    
     def fight(self, card=None):
         player = self.player
         game = self.game
@@ -599,3 +773,18 @@ class Wild(models.Model):
 
         self.save()
         game.next_turn()
+
+    def to_dict(self):
+        return {
+            'str': str(self),
+            'category': 'wild',
+            'player': self.player.to_dict(),
+            'card': self.card.to_dict(),
+            'winner': self.winner,
+            'battles': [b.to_dict for b in self.battle_list],
+            'texts': self.texts,
+            'is_win': self.is_win,
+            'step': self.step,
+            'step_code': self.step_code,
+            'step_display': self.step_display,
+        }

@@ -17,7 +17,7 @@ def pokemon_init(request):
 @login_required
 def new_game(request):
     name = request.POST.get('name')
-    game = Game.new(request.user, None, name)
+    game = Game.new(request.user, name)
     return HttpResponseRedirect(f'/game/game/{game.id}/')
 
 
