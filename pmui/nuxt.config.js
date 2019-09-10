@@ -1,7 +1,7 @@
 
 export default {
-  mode: 'universal',
-  // mode: 'spa',
+  // mode: 'universal',
+  mode: 'spa',
   /*
   ** Headers of the page
   */
@@ -24,7 +24,8 @@ export default {
   ** Global CSS
   */
   css: [
-    // 'element-ui/lib/theme-chalk/index.css'
+    'mint-ui/lib/style.css',
+    '~/assets/css/main.css'
   ],
   /*
   ** Plugins to load before mounting the App
@@ -49,6 +50,9 @@ export default {
   ** See https://axios.nuxtjs.org/options
   */
   axios: {
+    baseURL: process.env.API_URL || 'http://127.0.0.1:8000', // yuse env API_URL to override
+    browserBaseURL: process.env.API_URL_BROWSER || 'http://127.0.0.1:8000', // use env API_URL_BROWSER to override
+    credentials: false // cross-site Access-Control requests doesn't need to be made using credentials
   },
   /*
   ** Build configuration
