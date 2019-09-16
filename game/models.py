@@ -55,7 +55,7 @@ class Pokemon(models.Model):
             'hp': self.hp,
             'level': self.level,
             'evo_to': self.evo_to.to_dict() if self.evo_to else None,
-            'pic': self.pic,
+            'pic': self.pic if self.pic else '',
         }
 
 

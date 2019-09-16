@@ -1,10 +1,19 @@
 <template>
   <div class="container">
-    <mt-header fixed title="新建对局">
+    <mt-header title="新建对局">
     </mt-header>
 
-    <div>
-      <mt-field label="名称" placeholder="请输入名称" v-model="name"></mt-field>
+    <mt-field label="名称" placeholder="请输入名称" v-model="name"></mt-field>
+
+    <mt-cell title="挑选你的精灵"></mt-cell>
+    <div
+      :v-infinite-scroll="loadMore"
+      :infinite-scroll-disabled="loading"
+      :infinite-scroll-distance="10"
+      :infinite-scroll-immediate-check="true">
+      <mt-cell v-for="pokemon in pokemons" :key="pokemon.name" :title="pokemon.name" :value="pokemon.system" @click.native="newGame(pokemon.id)">
+        <img slot="icon" :src="pokemon.pic" width="24" height="24">
+      </mt-cell>
     </div>
 
   </div>
@@ -14,15 +23,32 @@
 
 export default {
   head: { title: '新建对局' },
+  async asyncData (context) {
+    const r = await context.$axios.get(`/game/api/pokemons/?token=admin:admin&init_pokemon=1`)
+    return {
+      pokemons: r.data
+    }
+  },
   data() {
     return {
-      name: ''
+      pokemons: [],
+      name: '',
+      loading: false
     }
   },
   methods: {
-    newGame () {
-      this.$router.push('/new')
-      // top.location.href = '/new'
+    loadMore() {
+      this.loading = true;
+      this.loading = false;
+    },
+    newGame (pokemonId) {
+      const url = '/game/api/new/'
+      const name = this.name
+      const pokemon_id = pokemonId
+      this.$axios.post(url, {name, pokemon_id}).then(res => {
+        this.$message.alert('创建成功')
+        console.log(res)
+      })
     }
   }
 }

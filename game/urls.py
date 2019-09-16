@@ -26,4 +26,5 @@ urlpatterns = [
     path('api/wild_fight/', apis.wild_fight),
     path('api/match_status/', apis.match_status),
     path('api/match_fight/', apis.match_fight),
+    path('api/pokemons/', apis.pokemons),
 ]

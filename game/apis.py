@@ -165,3 +165,14 @@ def match_fight(request):
     return match.to_dict()
 
 
+@pokemon_api
+def pokemons(request):
+    init_pokemon = request.GET.get('init_pokemon')
+    rs = []
+    ps = Pokemon.objects.order_by('no')
+    if init_pokemon:
+        ps = ps.filter(level=1)
+    for p in ps:
+        rs.append(p.to_dict())
+    return rs
+
