@@ -31,7 +31,8 @@ export default {
   ** Plugins to load before mounting the App
   */
   plugins: [
-    '@/plugins/mint-ui'
+    '@/plugins/mint-ui',
+    '@/plugins/axios',
   ],
   /*
   ** Nuxt.js dev-modules
@@ -62,6 +63,7 @@ export default {
     /*
     ** You can extend webpack config here
     */
+    // vendor: ['axios'],
     extend (config, ctx) {
     }
   }

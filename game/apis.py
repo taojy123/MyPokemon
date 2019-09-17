@@ -1,3 +1,4 @@
+import json
 import random
 from functools import wraps
 
@@ -12,13 +13,28 @@ from game.pokemon_init import init
 
 
 def get_param(request, name, default=None):
-    return request.GET.get(name, request.POST.get(name, default))
+    header_name = f'HTTP_X_{name}'.upper().replace('-', '_')
+    try:
+        data = json.loads(request.body)
+    except:
+        data = {}
+    return request.GET.get(
+        name,
+        request.POST.get(
+            name,
+            data.get(
+                name,
+                request.META.get(header_name, default)
+            )
+        )
+    )
 
 
 def pokemon_api(view_func):
     
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
+        
         token = get_param(request, 'token')
         game_id = get_param(request, 'game_id')
         match_id = get_param(request, 'match_id')
@@ -98,6 +114,8 @@ def join_game(request):
 @pokemon_api
 def game_status(request):
     game = request.game
+    if not game:
+        return {}
     return game.to_dict()
 
 

@@ -138,5 +138,9 @@ CORS_ALLOW_HEADERS = [
     'x-shop-domain',
     'x-bulk-operation',
     'x-frame-options',
+    'x-token',
+    'x-game-id',
+    'x-match-id',
+    'x-wild-id',
 ]
 

@@ -20,6 +20,7 @@ class Skill(models.Model):
     
     def to_dict(self):
         return {
+            'id': self.id,
             'str': str(self),
             'name': self.name,
             'system': self.system,
@@ -45,6 +46,7 @@ class Pokemon(models.Model):
     
     def to_dict(self):
         return {
+            'id': self.id,
             'str': str(self),
             'name': self.name,
             'no': self.no,
@@ -215,6 +217,7 @@ class Game(models.Model):
     
     def to_dict(self):
         return {
+            'id': self.id,
             'str': str(self),
             'name': self.name,
             'round': self.round,
@@ -256,8 +259,8 @@ class Player(models.Model):
     
     def to_dict(self):
         return {
-            'str': str(self),
             'id': self.id,
+            'str': str(self),
             'name': self.name,
             'user_id': self.user.id if self.user else None,
             'username': self.user.username if self.user else None,
@@ -367,6 +370,7 @@ class Card(models.Model):
     
     def to_dict(self):
         return {
+            'id': self.id,
             'str': str(self),
             'pokemon': self.pokemon.to_dict(),
             'skill': self.skill.to_dict() if self.skill else None,
@@ -532,6 +536,7 @@ class Battle(models.Model):
     
     def to_dict(self):
         return {
+            'id': self.id,
             'str': str(self),
             'card1': self.card1.to_dict() if self.card1 else None,
             'card2': self.card2.to_dict() if self.card2 else None,
@@ -665,6 +670,7 @@ class Match(models.Model):
 
     def to_dict(self):
         return {
+            'id': self.id,
             'str': str(self),
             'category': 'match',
             'player1': self.player1.to_dict(),
@@ -776,6 +782,7 @@ class Wild(models.Model):
 
     def to_dict(self):
         return {
+            'id': self.id,
             'str': str(self),
             'category': 'wild',
             'player': self.player.to_dict(),

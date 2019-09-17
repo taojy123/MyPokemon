@@ -21,17 +21,18 @@
 
 <script>
 
+import { Indicator } from 'mint-ui';
+
 export default {
   head: { title: '新建对局' },
   async asyncData (context) {
-    const r = await context.$axios.get(`/game/api/pokemons/?token=admin:admin&init_pokemon=1`)
+    const r = await context.$axios.get(`/game/api/pokemons/`, {params: {init_pokemon: 1}})
     return {
       pokemons: r.data
     }
   },
   data() {
     return {
-      pokemons: [],
       name: '',
       loading: false
     }
@@ -42,12 +43,17 @@ export default {
       this.loading = false;
     },
     newGame (pokemonId) {
+      Indicator.open()
       const url = '/game/api/new/'
       const name = this.name
       const pokemon_id = pokemonId
       this.$axios.post(url, {name, pokemon_id}).then(res => {
-        this.$message.alert('创建成功')
-        console.log(res)
+        Indicator.close()
+        this.$message.alert('创建成功').then(()=>{
+          const gameId = res.data.id
+          this.$router.push(`/game/${gameId}`)
+        })
+
       })
     }
   }
